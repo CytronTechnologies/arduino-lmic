@@ -34,11 +34,11 @@
 #define BCN_GUARD_osticks      ms2osticks(BCN_GUARD_ms)
 #define BCN_WINDOW_osticks     ms2osticks(BCN_WINDOW_ms)
 #define AIRTIME_BCN_osticks    us2osticks(AIRTIME_BCN)
-#if defined(CFG_eu868)
-#define DNW2_SAFETY_ZONE       ms2osticks(3000)
+#if defined(CFG_eu868) || defined(CFG_my919)
+#define DNW2_SAFETY_ZONE ms2osticks(3000)
 #endif
-#if defined(CFG_us915)
-#define DNW2_SAFETY_ZONE       ms2osticks(750)
+#if defined(CFG_us915) || defined(CFG_au915)
+#define DNW2_SAFETY_ZONE ms2osticks(750)
 #endif
 
 // Special APIs - for development or testing
@@ -260,6 +260,52 @@ CONST_TABLE(u1_t, _DR2RPS_CRC)[] = {
 
 #define pow2dBm(mcmd_ladr_p1) ((s1_t)(30 - (((mcmd_ladr_p1)&MCMD_LADR_POW_MASK)<<1)))
 
+#elif defined(CFG_au915)
+
+#define maxFrameLen(dr) ((dr) <= DR_SF11CR ? TABLE_GET_U1(maxFrameLens, (dr)) : 0xFF)
+CONST_TABLE(u1_t, maxFrameLens)
+[] = {64, 64, 64, 128, 255, 255, 255, 255, 66, 142};
+
+CONST_TABLE(u1_t, _DR2RPS_CRC)
+[] = {
+    ILLEGAL_RPS,
+    MAKERPS(SF12, BW125, CR_4_5, 0, 0),
+    MAKERPS(SF11, BW125, CR_4_5, 0, 0),
+    MAKERPS(SF10, BW125, CR_4_5, 0, 0),
+    MAKERPS(SF9, BW125, CR_4_5, 0, 0),
+    MAKERPS(SF8, BW125, CR_4_5, 0, 0),
+    MAKERPS(SF7, BW125, CR_4_5, 0, 0),
+    MAKERPS(SF8, BW500, CR_4_5, 0, 0),
+    ILLEGAL_RPS,
+    MAKERPS(SF12, BW500, CR_4_5, 0, 0),
+    MAKERPS(SF11, BW500, CR_4_5, 0, 0),
+    MAKERPS(SF10, BW500, CR_4_5, 0, 0),
+    MAKERPS(SF9, BW500, CR_4_5, 0, 0),
+    MAKERPS(SF8, BW500, CR_4_5, 0, 0),
+    MAKERPS(SF7, BW500, CR_4_5, 0, 0),
+    ILLEGAL_RPS};
+
+#define pow2dBm(mcmd_ladr_p1) ((s1_t)(30 - (((mcmd_ladr_p1)&MCMD_LADR_POW_MASK) << 1)))
+
+#elif defined(CFG_my919)
+
+#define maxFrameLen(dr) ((dr) <= DR_SF9 ? TABLE_GET_U1(maxFrameLens, (dr)) : 0xFF)
+CONST_TABLE(u1_t, maxFrameLens)
+[] = {64, 64, 64, 128};
+
+CONST_TABLE(u1_t, _DR2RPS_CRC)
+[] = {
+    ILLEGAL_RPS,
+    MAKERPS(SF12, BW125, CR_4_5, 0, 0),
+    MAKERPS(SF11, BW125, CR_4_5, 0, 0),
+    MAKERPS(SF10, BW125, CR_4_5, 0, 0),
+    MAKERPS(SF9, BW125, CR_4_5, 0, 0),
+    MAKERPS(SF8, BW125, CR_4_5, 0, 0),
+    MAKERPS(SF7, BW125, CR_4_5, 0, 0),
+    ILLEGAL_RPS};
+
+#define pow2dBm(mcmd_ladr_p1) ((s1_t)(16 - (((mcmd_ladr_p1)&MCMD_LADR_POW_MASK) << 1)))
+
 #endif // ================================================
 
 static CONST_TABLE(u1_t, SENSITIVITY)[7][3] = {
@@ -384,6 +430,31 @@ static CONST_TABLE(ostime_t, DR2HSYM_osticks)[] = {
     us2osticksRound(128<<2),  // DR_SF7    DR_SF9CR
     us2osticksRound(128<<1),  // DR_SF8C   DR_SF8CR
     us2osticksRound(128<<0)   // ------    DR_SF7CR
+#elif defined(CFG_au915)
+#define dr2hsym(dr) (TABLE_GET_OSTIME(DR2HSYM_osticks, (dr))) // map DR_SFnCR -> 0-6
+    us2osticksRound(128 << 7), // DR_SF12
+    us2osticksRound(128 << 6), // DR_SF11
+    us2osticksRound(128 << 5), // DR_SF10
+    us2osticksRound(128 << 4), // DR_SF9
+    us2osticksRound(128 << 3), // DR_SF8
+    us2osticksRound(128 << 2), // DR_SF7
+    us2osticksRound(128 << 1), // DR_SF8C
+    us2osticksRound(128 << 0), // -------
+    us2osticksRound(128 << 5), // DR_SF12CR
+    us2osticksRound(128 << 4), // DR_SF11CR
+    us2osticksRound(128 << 3), // DR_SF10CR
+    us2osticksRound(128 << 2), // DR_SF9CR
+    us2osticksRound(128 << 1), // DR_SF8CR
+    us2osticksRound(128 << 0)  // DR_SF7CR
+#elif defined(CFG_my919)
+#define dr2hsym(dr) (TABLE_GET_OSTIME(DR2HSYM_osticks, (dr)))
+    us2osticksRound(128 << 7), // DR_SF12
+    us2osticksRound(128 << 6), // DR_SF11
+    us2osticksRound(128 << 5), // DR_SF10
+    us2osticksRound(128 << 4), // DR_SF9
+    us2osticksRound(128 << 3), // DR_SF8
+    us2osticksRound(128 << 2), // DR_SF7
+    us2osticksRound(80)
 #endif
 };
 
@@ -828,7 +899,8 @@ static void updateTx (ostime_t txbeg) {
         LMIC.txpow = 30;
         return;
     }
-    LMIC.txpow = 26;
+    //LMIC.txpow = 26;
+    LMIC.txpow = LMIC.adrTxPow;
     if( chnl < 64+8 ) {
         LMIC.freq = US915_500kHz_UPFBASE + (chnl-64)*US915_500kHz_UPFSTEP;
     } else {
@@ -930,6 +1002,468 @@ static ostime_t nextJoinState (void) {
 // END: US915 related stuff
 //
 // ================================================================================
+// ================================================================================
+#elif defined(CFG_au915)
+// ================================================================================
+//
+// BEG: AU915 related stuff
+//
+static void initDefaultChannels(void)
+{
+    for (u1_t i = 0; i < 4; i++)
+        LMIC.channelMap[i] = 0xFFFF;
+    LMIC.channelMap[4] = 0x00FF;
+}
+
+static u4_t convFreq(xref2u1_t ptr)
+{
+    u4_t freq = (os_rlsbf4(ptr - 1) >> 8) * 100;
+    if (freq < AU915_FREQ_MIN || freq > AU915_FREQ_MAX)
+        freq = 0;
+    return freq;
+}
+
+bit_t LMIC_setupChannel(u1_t chidx, u4_t freq, u2_t drmap, s1_t band)
+{
+    if (chidx < 72 || chidx >= 72 + MAX_XCHANNELS)
+        return 0; // channels 0..71 are hardwired
+    chidx -= 72;
+    LMIC.xchFreq[chidx] = freq;
+    LMIC.xchDrMap[chidx] = drmap == 0 ? DR_RANGE_MAP(DR_SF10, DR_SF8C) : drmap;
+    LMIC.channelMap[chidx >> 4] |= (1 << (chidx & 0xF));
+    return 1;
+}
+
+void LMIC_disableChannel(u1_t channel)
+{
+    if (channel < 72 + MAX_XCHANNELS)
+        LMIC.channelMap[channel >> 4] &= ~(1 << (channel & 0xF));
+}
+
+void LMIC_enableChannel(u1_t channel)
+{
+    if (channel < 72 + MAX_XCHANNELS)
+        LMIC.channelMap[channel >> 4] |= (1 << (channel & 0xF));
+}
+
+void LMIC_enableSubBand(u1_t band)
+{
+    ASSERT(band < 8);
+    u1_t start = band * 8;
+    u1_t end = start + 8;
+    for (int channel = start; channel < end; ++channel)
+        LMIC_enableChannel(channel);
+}
+void LMIC_disableSubBand(u1_t band)
+{
+    ASSERT(band < 8);
+    u1_t start = band * 8;
+    u1_t end = start + 8;
+    for (int channel = start; channel < end; ++channel)
+        LMIC_disableChannel(channel);
+}
+void LMIC_selectSubBand(u1_t band)
+{
+    ASSERT(band < 8);
+    for (int b = 0; b < 8; ++b)
+    {
+        if (band == b)
+            LMIC_enableSubBand(b);
+        else
+            LMIC_disableSubBand(b);
+    }
+}
+
+static u1_t mapChannels(u1_t chpage, u2_t chmap)
+{ // chpage == chmaskcntl << 4
+    if (chpage == MCMD_LADR_CHP_125ON || chpage == MCMD_LADR_CHP_125OFF)
+    {
+        u2_t en125 = chpage == MCMD_LADR_CHP_125ON ? 0xFFFF : 0x0000;
+        for (u1_t u = 0; u < 4; u++)
+            LMIC.channelMap[u] = en125;
+        LMIC.channelMap[64 / 16] = chmap;
+    }
+    else
+    {
+        u1_t chmaskcntl = chpage >> 4;
+        if (chmaskcntl >= (72 + MAX_XCHANNELS + 15) / 16)
+            return 0;
+        LMIC.channelMap[chmaskcntl] = chmap;
+    }
+    return 1;
+}
+
+static void updateTx(ostime_t txbeg)
+{
+    u1_t chnl = LMIC.txChnl;
+
+    if (chnl < 64)
+    {
+        LMIC.freq = AU915_125kHz_UPFBASE + chnl * AU915_125kHz_UPFSTEP;
+        LMIC.txpow = LMIC.adrTxPow;
+        return;
+    }
+    LMIC.txpow = LMIC.adrTxPow;
+    if (chnl < 64 + 8)
+    {
+        LMIC.freq = AU915_500kHz_UPFBASE + (chnl - 64) * AU915_500kHz_UPFSTEP;
+    }
+    else
+    {
+        ASSERT(chnl < 64 + 8 + MAX_XCHANNELS);
+        LMIC.freq = LMIC.xchFreq[chnl - 72];
+    }
+
+    // Update global duty cycle stats
+    if (LMIC.globalDutyRate != 0)
+    {
+        ostime_t airtime = calcAirTime(LMIC.rps, LMIC.dataLen);
+        LMIC.globalDutyAvail = txbeg + (airtime << LMIC.globalDutyRate);
+    }
+}
+
+#define nextTx(now) (_nextTx(), (now))
+static void _nextTx(void)
+{
+    if (LMIC.chRnd == 0)
+    {
+        LMIC.chRnd = os_getRndU1() & 0x3F;
+    }
+    if (LMIC.datarate >= DR_SF8C)
+    { // 500kHz
+        u1_t map = LMIC.channelMap[64 / 16] & 0xFF;
+        for (u1_t i = 0; i < 8; i++)
+        {
+            if ((map & (1 << (++LMIC.chRnd & 7))) != 0)
+            {
+                LMIC.txChnl = 64 + (LMIC.chRnd & 7);
+                return;
+            }
+        }
+    }
+    else
+    { // 125kHz
+        for (u1_t i = 0; i < 64; i++)
+        {
+            u1_t chnl = ++LMIC.chRnd & 0x3F;
+            if ((LMIC.channelMap[(chnl >> 4)] & (1 << (chnl & 0xF))) != 0)
+            {
+                LMIC.txChnl = chnl;
+                return;
+            }
+        }
+    }
+    // No feasible channel  found! Keep old one.
+}
+
+#if !defined(DISABLE_BEACONS)
+static void setBcnRxParams(void)
+{
+    LMIC.dataLen = 0;
+    LMIC.freq = AU915_500kHz_DNFBASE + LMIC.bcnChnl * AU915_500kHz_DNFSTEP;
+    LMIC.rps = setIh(setNocrc(dndr2rps((dr_t)DR_BCN), 1), LEN_BCN);
+}
+#endif // !DISABLE_BEACONS
+
+#define setRx1Params()                                                                 \
+    {                                                                                  \
+        LMIC.freq = AU915_500kHz_DNFBASE + (LMIC.txChnl & 0x7) * AU915_500kHz_DNFSTEP; \
+        if (/* TX datarate */ LMIC.dndr < DR_SF8C)                                     \
+            LMIC.dndr += DR_SF10CR - DR_SF10;                                          \
+        else if (LMIC.dndr == DR_SF8C)                                                 \
+            LMIC.dndr = DR_SF7CR;                                                      \
+        LMIC.rps = dndr2rps(LMIC.dndr);                                                \
+    }
+
+#if !defined(DISABLE_JOIN)
+static void initJoinLoop(void)
+{
+    LMIC.chRnd = 0;
+    LMIC.txChnl = 0;
+    LMIC.adrTxPow = 30;
+    ASSERT((LMIC.opmode & OP_NEXTCHNL) == 0);
+    LMIC.txend = os_getTime();
+    setDrJoin(DRCHG_SET, DR_SF12);
+}
+
+static ostime_t nextJoinState(void)
+{
+    // Try the following:
+    //   SF7/8/9/10  on a random channel 0..63
+    //   SF8C        on a random channel 64..71
+    //
+    u1_t failed = 0;
+    if (LMIC.datarate != DR_SF8C)
+    {
+        LMIC.txChnl = 64 + (LMIC.txChnl & 7);
+        setDrJoin(DRCHG_SET, DR_SF8C);
+    }
+    else
+    {
+        LMIC.txChnl = os_getRndU1() & 0x3F;
+        /*s1_t dr = DR_SF7 - ++LMIC.txCnt;
+        if( dr < DR_SF12 ) {
+            dr = DR_SF12;
+            failed = 1; // All DR exhausted - signal failed
+        }*/
+        s1_t dr = DR_SF12;
+        if (++LMIC.txCnt > 5)
+        {
+            failed = 1;
+        }
+        setDrJoin(DRCHG_SET, dr);
+    }
+    LMIC.opmode &= ~OP_NEXTCHNL;
+    LMIC.txend = os_getTime() +
+                 (isTESTMODE()
+                      // Avoid collision with JOIN ACCEPT being sent by GW (but we missed it - GW is still busy)
+                      ? DNW2_SAFETY_ZONE
+                      // Otherwise: randomize join (street lamp case):
+                      // SF10:16, SF9=8,..SF8C:1secs
+                      : rndDelay(16 >> LMIC.datarate));
+    // 1 - triggers EV_JOIN_FAILED event
+    return failed;
+}
+#endif // !DISABLE_JOIN
+
+    //
+    // END: AU915 related stuff
+    //
+    // ================================================================================
+#elif defined(CFG_my919)
+// ================================================================================
+//
+// BEG: MY919 related stuff
+//
+enum
+{
+    NUM_DEFAULT_CHANNELS = 3
+};
+static CONST_TABLE(u4_t, iniChannelFreq)[6] = {
+    // Join frequencies and duty cycle limit (10%)
+    MY919_F1 | BAND_MILLI,
+    MY919_F2 | BAND_MILLI,
+    MY919_F3 | BAND_MILLI,
+    // Default operational frequencies
+    MY919_F1 | BAND_CENTI,
+    MY919_F2 | BAND_CENTI,
+    MY919_F3 | BAND_CENTI,
+};
+
+static void initDefaultChannels(bit_t join)
+{
+    os_clearMem(&LMIC.channelFreq, sizeof(LMIC.channelFreq));
+    os_clearMem(&LMIC.channelDrMap, sizeof(LMIC.channelDrMap));
+    os_clearMem(&LMIC.bands, sizeof(LMIC.bands));
+
+    LMIC.channelMap = 0x07;
+    u1_t su = join ? 0 : 3;
+    for (u1_t fu = 0; fu < 3; fu++, su++)
+    {
+        LMIC.channelFreq[fu] = TABLE_GET_U4(iniChannelFreq, su);
+        LMIC.channelDrMap[fu] = DR_RANGE_MAP(DR_SF12, DR_SF7);
+    }
+
+    LMIC.bands[BAND_MILLI].txcap = 1000; // 0.1%
+    LMIC.bands[BAND_MILLI].txpow = 14;
+    LMIC.bands[BAND_MILLI].lastchnl = os_getRndU1() % MAX_CHANNELS;
+    LMIC.bands[BAND_CENTI].txcap = 100; // 1%
+    LMIC.bands[BAND_CENTI].txpow = 14;
+    LMIC.bands[BAND_CENTI].lastchnl = os_getRndU1() % MAX_CHANNELS;
+    LMIC.bands[BAND_DECI].txcap = 10; // 10%
+    LMIC.bands[BAND_DECI].txpow = 14;
+    LMIC.bands[BAND_DECI].lastchnl = os_getRndU1() % MAX_CHANNELS;
+    LMIC.bands[BAND_MILLI].avail =
+    LMIC.bands[BAND_CENTI].avail =
+    LMIC.bands[BAND_DECI].avail = os_getTime();
+}
+
+bit_t LMIC_setupBand(u1_t bandidx, s1_t txpow, u2_t txcap)
+{
+    if (bandidx > BAND_AUX)
+        return 0;
+    band_t *b = &LMIC.bands[bandidx];
+    b->txpow = txpow;
+    b->txcap = txcap;
+    b->avail = os_getTime();
+    b->lastchnl = os_getRndU1() % MAX_CHANNELS;
+    return 1;
+}
+
+bit_t LMIC_setupChannel(u1_t chidx, u4_t freq, u2_t drmap, s1_t band)
+{
+    if (chidx >= MAX_CHANNELS)
+        return 0;
+    if (band == -1)
+    {
+        // not yet decided
+        if (freq >= 922100000 && freq <= 922300000)
+            freq |= BAND_DECI; // 10%
+        else if ((freq >= 920100000 && freq <= 921100000) ||
+                    (freq >= 922500000 && freq <= 922900000))
+            freq |= BAND_CENTI; // 1%
+        else
+            freq |= BAND_MILLI; // 0.1%
+        
+    }
+    else
+    {
+        if (band > BAND_AUX)
+            return 0;
+        freq = (freq & ~3) | band;
+    }
+    LMIC.channelFreq[chidx] = freq;
+    LMIC.channelDrMap[chidx] = drmap == 0 ? DR_RANGE_MAP(DR_SF12, DR_SF7) : drmap;
+    LMIC.channelMap |= 1 << chidx; // enabled right away
+    return 1;
+}
+
+void LMIC_disableChannel(u1_t channel)
+{
+    LMIC.channelFreq[channel] = 0;
+    LMIC.channelDrMap[channel] = 0;
+    LMIC.channelMap &= ~(1 << channel);
+}
+
+static u4_t convFreq(xref2u1_t ptr)
+{
+    u4_t freq = (os_rlsbf4(ptr - 1) >> 8) * 100;
+    if (freq < MY919_FREQ_MIN || freq > MY919_FREQ_MAX)
+        freq = 0;
+    return freq;
+}
+
+static u1_t mapChannels(u1_t chpage, u2_t chmap)
+{
+    // Bad page, disable all channel, enable non-existent
+    if (chpage != 0 || chmap == 0 || (chmap & ~LMIC.channelMap) != 0)
+        return 0; // illegal input
+    for (u1_t chnl = 0; chnl < MAX_CHANNELS; chnl++)
+    {
+        if ((chmap & (1 << chnl)) != 0 && LMIC.channelFreq[chnl] == 0)
+            chmap &= ~(1 << chnl); // ignore - channel is not defined
+    }
+    LMIC.channelMap = chmap;
+    return 1;
+}
+
+static void updateTx(ostime_t txbeg)
+{
+    u4_t freq = LMIC.channelFreq[LMIC.txChnl];
+    // Update global/band specific duty cycle stats
+    ostime_t airtime = calcAirTime(LMIC.rps, LMIC.dataLen);
+    // Update channel/global duty cycle stats
+    u1_t bType = freq & 0x3;
+    xref2band_t band = &LMIC.bands[freq & 0x3];
+    LMIC.freq = freq & ~(u4_t)3;
+    //LMIC.txpow = band->txpow;
+    LMIC.txpow = LMIC.adrTxPow;
+    band->avail = txbeg + airtime * band->txcap;
+    if (LMIC.globalDutyRate != 0)
+        LMIC.globalDutyAvail = txbeg + (airtime << LMIC.globalDutyRate);
+}
+
+static ostime_t nextTx(ostime_t now)
+{
+    u1_t bmap = 0xF;
+    do
+    {
+        ostime_t mintime = now + /*8h*/ sec2osticks(28800);
+        u1_t band = 0;
+        for (u1_t bi = 0; bi < 4; bi++)
+        {
+            if ((bmap & (1 << bi)) && mintime - LMIC.bands[bi].avail > 0)
+            {
+                mintime = LMIC.bands[band = bi].avail;
+            }
+        }
+        // Find next channel in given band
+        u1_t chnl = LMIC.bands[band].lastchnl;
+        for (u1_t ci = 0; ci < MAX_CHANNELS; ci++)
+        {
+            if ((chnl = (chnl + 1)) >= MAX_CHANNELS)
+                chnl -= MAX_CHANNELS;
+            if ((LMIC.channelMap & (1 << chnl)) != 0 && // channel enabled
+                (LMIC.channelDrMap[chnl] & (1 << (LMIC.datarate & 0xF))) != 0 &&
+                band == (LMIC.channelFreq[chnl] & 0x3))
+            { // in selected band
+                LMIC.txChnl = LMIC.bands[band].lastchnl = chnl;
+                return mintime;
+            }
+        }
+        if ((bmap &= ~(1 << band)) == 0)
+        {
+            // No feasible channel  found!
+            return mintime;
+        }
+    } while (1);
+}
+
+#if !defined(DISABLE_BEACONS)
+static void setBcnRxParams(void)
+{
+    LMIC.dataLen = 0;
+    LMIC.freq = LMIC.channelFreq[LMIC.bcnChnl] & ~(u4_t)3;
+    LMIC.rps = setIh(setNocrc(dndr2rps((dr_t)DR_BCN), 1), LEN_BCN);
+}
+#endif // !DISABLE_BEACONS
+
+#define setRx1Params() /*LMIC.freq/rps remain unchanged*/
+
+#if !defined(DISABLE_JOIN)
+static void initJoinLoop(void)
+{
+    LMIC.txChnl = os_getRndU1() % 3;
+    LMIC.adrTxPow = 14;
+    setDrJoin(DRCHG_SET, DR_SF12);
+    initDefaultChannels(1);
+    ASSERT((LMIC.opmode & OP_NEXTCHNL) == 0);
+    LMIC.txend = LMIC.bands[BAND_DECI].avail + rndDelay(8);
+}
+
+static ostime_t nextJoinState(void)
+{
+    u1_t failed = 0;
+
+    // If both fail try next lower datarate
+    if (++LMIC.txChnl == 3)
+        LMIC.txChnl = 0;
+    if ((++LMIC.txCnt & 1) == 0)
+    {
+        // Lower DR every 2nd try (having tried 868.x and 864.x with the same DR)
+        if (LMIC.datarate == DR_SF12)
+            failed = 1; // we have tried all DR - signal EV_JOIN_FAILED
+        else
+            setDrJoin(DRCHG_NOJACC, decDR((dr_t)LMIC.datarate));
+    }
+    // Clear NEXTCHNL because join state engine controls channel hopping
+    LMIC.opmode &= ~OP_NEXTCHNL;
+    // Move txend to randomize synchronized concurrent joins.
+    // Duty cycle is based on txend.
+    ostime_t time = os_getTime();
+    if (time - LMIC.bands[BAND_MILLI].avail < 0)
+        time = LMIC.bands[BAND_MILLI].avail;
+    LMIC.txend = time +
+                 (isTESTMODE()
+                      // Avoid collision with JOIN ACCEPT @ SF12 being sent by GW (but we missed it)
+                      ? DNW2_SAFETY_ZONE
+                      // Otherwise: randomize join (street lamp case):
+                      // SF12:255, SF11:127, .., SF7:8secs
+                      : DNW2_SAFETY_ZONE + rndDelay(255 >> LMIC.datarate));
+    #if LMIC_DEBUG_LEVEL > 1
+        if (failed)
+            lmic_printf("%lu: Join failed\n", os_getTime());
+        else
+            lmic_printf("%lu: Scheduling next join at %lu\n", os_getTime(), LMIC.txend);
+    #endif
+    // 1 - triggers EV_JOIN_FAILED event
+    return failed;
+}
+#endif // !DISABLE_JOIN
+
+//
+// END: MY919 related stuff
+//
 #else
 #error Unsupported frequency band!
 #endif
@@ -999,9 +1533,9 @@ static int decodeBeacon (void) {
     ASSERT(LMIC.dataLen == LEN_BCN); // implicit header RX guarantees this
     xref2u1_t d = LMIC.frame;
     if(
-#if CFG_eu868
+#if CFG_eu868 || CFG_my919
         d[OFF_BCN_CRC1] != (u1_t)os_crc16(d,OFF_BCN_CRC1)
-#elif CFG_us915
+#elif CFG_us915 || CFG_au915
         os_rlsbf2(&d[OFF_BCN_CRC1]) != os_crc16(d,OFF_BCN_CRC1)
 #endif
         )
@@ -1169,6 +1703,28 @@ static bit_t decodeFrame (void) {
             if( (LMIC.ladrAns & 0x7F) == (MCMD_LADR_ANS_POWACK | MCMD_LADR_ANS_CHACK | MCMD_LADR_ANS_DRACK) ) {
                 // Nothing went wrong - use settings
                 LMIC.upRepeat = uprpt;
+                // check if there is any channels 0 - 63 enabled, if there is, force dr = 5 or less
+            #if defined(CFG_eu868) || defined(CFG_my919)
+                if (LMIC.channelMap & 0xFFFF)
+                {
+                    dr = dr > 5 ? 5 : dr;
+                }
+            #elif defined(CFG_au915) || defined(CFG_us915)
+                for (u1_t u = 0; u < 4; u++)
+                {
+                    if (LMIC.channelMap[u] & 0xFFFF)
+                    {
+                        dr = dr > 5 ? 5 : dr;
+                        break;
+                    }
+                }
+            #endif
+                setDrTxpow(DRCHG_NWKCMD, dr, pow2dBm(p1));
+            #if LMIC_DEBUG_LEVEL > 1
+                u1_t pwridx = p1 & MCMD_LADR_POW_MASK;
+                printf("Request change dr=%d, pwridx=%d, pwr=%d\n", dr, pwridx, pow2dBm(p1));
+                printf("Current LMIC txpower=%d\n", LMIC.adrTxPow);
+            #endif
                 setDrTxpow(DRCHG_NWKCMD, dr, pow2dBm(p1));
             }
             LMIC.adrChanged = 1;  // Trigger an ACK to NWK
@@ -1487,11 +2043,11 @@ static bit_t processJoinAccept (void) {
     LMIC.devaddr = addr;
     LMIC.netid = os_rlsbf4(&LMIC.frame[OFF_JA_NETID]) & 0xFFFFFF;
 
-#if defined(CFG_eu868)
+#if defined(CFG_eu868) || defined(CFG_my919)
     initDefaultChannels(0);
 #endif
     if( dlen > LEN_JA ) {
-#if defined(CFG_us915)
+#if defined(CFG_us915) || defined(CFG_au915)
         goto badframe;
 #endif
         dlen = OFF_CFLIST;
@@ -1528,6 +2084,11 @@ static bit_t processJoinAccept (void) {
         // Lower DR every try below current UP DR
         LMIC.datarate = lowerDR(LMIC.datarate, LMIC.rejoinCnt);
     }
+    
+    // Uncomment this to stay wihin same channel to process next downlink data (adr request)
+    //LMIC.opmode &= ~(OP_JOINING | OP_TRACK | OP_REJOIN | OP_TXRXPEND | OP_PINGINI | OP_NEXTCHNL);
+    
+    // Default - will move to next channel to process next downlink data (adr request)
     LMIC.opmode &= ~(OP_JOINING|OP_TRACK|OP_REJOIN|OP_TXRXPEND|OP_PINGINI) | OP_NEXTCHNL;
     LMIC.txCnt = 0;
     stateJustJoined();
@@ -2258,7 +2819,7 @@ void LMIC_reset (void) {
     LMIC.ping.dr      =  DR_PING;   // ditto
     LMIC.ping.intvExp =  0xFF;
 #endif // !DISABLE_PING
-#if defined(CFG_us915)
+#if defined(CFG_us915) || defined(CFG_au915)
     initDefaultChannels();
 #endif
     DO_DEVDB(LMIC.devaddr,      devaddr);
@@ -2346,7 +2907,7 @@ void LMIC_setSession (u4_t netid, devaddr_t devaddr, xref2u1_t nwkKey, xref2u1_t
     if( artKey != (xref2u1_t)0 )
         os_copyMem(LMIC.artKey, artKey, 16);
 
-#if defined(CFG_eu868)
+#if defined(CFG_eu868) || defined(CFG_my919)
     initDefaultChannels(0);
 #endif
 
