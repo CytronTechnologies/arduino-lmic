@@ -13,6 +13,10 @@ see the PDF file in the doc subdirectory.
 This library requires Arduino IDE version 1.6.6 or above, since it
 requires C99 mode to be enabled by default.
 
+Modification
+------------
+This library has been modified to add AU915 and MY919 (unofficial) band into config.
+
 Installing
 ----------
 To install this library:
